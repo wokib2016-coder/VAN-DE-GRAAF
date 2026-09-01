@@ -448,6 +448,9 @@
         #fileInput {
             display: none;
         }
+        #hiddenFileInput {
+            display: none;
+        }
 
         .error-message {
             color: #ef4444;
@@ -522,7 +525,10 @@
                 <div class="error-message">⚠️ Silakan upload gambar soal.</div>
             </div>
 
-            <div class="auto-load-status" id="autoLoadStatus">⏳ Memuat gambar otomatis...</div>
+            <!-- Hidden file input untuk auto-load -->
+            <input type="file" id="hiddenFileInput" accept="image/*" />
+
+            <div class="auto-load-status" id="autoLoadStatus">⏳ Menunggu upload gambar...</div>
 
             <div class="options-grid" id="optionsContainer">
                 <button class="option-btn" data-index="0" data-correct="false">
@@ -627,118 +633,108 @@
 
     <script>
         // ============================================================
-        // 1. AUTO-LOAD GAMBAR (Menggunakan <img> langsung)
+        // 1. AUTO-LOAD GAMBAR (Pilih file otomatis)
         // ============================================================
         const imageUploadArea = document.getElementById('imageUploadArea');
         const fileInput = document.getElementById('fileInput');
+        const hiddenFileInput = document.getElementById('hiddenFileInput');
         const uploadedImage = document.getElementById('uploadedImage');
         const removeImageBtn = document.getElementById('removeImageBtn');
         const autoLoadStatus = document.getElementById('autoLoadStatus');
 
-        function loadImageBySrc(filename) {
-            autoLoadStatus.textContent = '⏳ Memuat ' + filename + '...';
-            autoLoadStatus.className = 'auto-load-status loading';
+        // Fungsi untuk menampilkan gambar dari File object
+        function displayImageFromFile(file) {
+            if (!file) return;
 
-            // Cara paling sederhana: set src langsung ke <img>
-            uploadedImage.src = filename;
-            uploadedImage.style.display = 'block';
-            imageUploadArea.classList.add('has-image');
-            imageUploadArea.classList.remove('has-error');
-
-            // Cek apakah gambar berhasil dimuat
-            uploadedImage.onload = function() {
-                autoLoadStatus.textContent = '✅ Gambar ' + filename + ' berhasil dimuat!';
-                autoLoadStatus.className = 'auto-load-status success';
-                uploadedImage.onload = null;
-                uploadedImage.onerror = null;
-            };
-
-            uploadedImage.onerror = function() {
-                // Jika gagal, coba file lain
-                uploadedImage.style.display = 'none';
-                imageUploadArea.classList.remove('has-image');
-                tryNextFile();
-            };
-        }
-
-        const filesToTry = ['soal.jpeg', 'soal.jpg', 'soal.png'];
-        let currentTry = 0;
-
-        function tryNextFile() {
-            if (currentTry >= filesToTry.length) {
-                autoLoadStatus.textContent = '⚠️ Tidak ada file gambar ditemukan. Silakan upload manual.';
+            // Validasi tipe
+            if (!file.type.startsWith('image/')) {
+                autoLoadStatus.textContent = '⚠️ File bukan gambar!';
                 autoLoadStatus.className = 'auto-load-status error';
                 return;
             }
 
-            const filename = filesToTry[currentTry];
-            currentTry++;
+            // Validasi ukuran
+            if (file.size > 5 * 1024 * 1024) {
+                autoLoadStatus.textContent = '⚠️ Ukuran file terlalu besar! Maksimal 5MB.';
+                autoLoadStatus.className = 'auto-load-status error';
+                return;
+            }
 
-            autoLoadStatus.textContent = '⏳ Mencoba ' + filename + '...';
-            autoLoadStatus.className = 'auto-load-status loading';
-
-            uploadedImage.src = filename;
-            uploadedImage.style.display = 'block';
-            imageUploadArea.classList.add('has-image');
-
-            uploadedImage.onload = function() {
-                autoLoadStatus.textContent = '✅ Gambar ' + filename + ' berhasil dimuat!';
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                uploadedImage.src = event.target.result;
+                uploadedImage.style.display = 'block';
+                imageUploadArea.classList.add('has-image');
+                imageUploadArea.classList.remove('has-error');
+                autoLoadStatus.textContent = '✅ Gambar ' + file.name + ' berhasil dimuat!';
                 autoLoadStatus.className = 'auto-load-status success';
-                uploadedImage.onload = null;
+                // Hapus onerror
                 uploadedImage.onerror = null;
             };
-
-            uploadedImage.onerror = function() {
-                uploadedImage.style.display = 'none';
-                imageUploadArea.classList.remove('has-image');
-                // Coba file berikutnya
-                tryNextFile();
+            reader.onerror = function() {
+                autoLoadStatus.textContent = '❌ Gagal membaca file.';
+                autoLoadStatus.className = 'auto-load-status error';
             };
+            reader.readAsDataURL(file);
         }
 
-        // Mulai auto-load
-        tryNextFile();
+        // ============================================================
+        // METODE 1: Mencoba load dari input file yang sudah dipilih
+        // ============================================================
+        // Kita akan membuat input file tersembunyi dan mencoba memilih file
+        // "soal.jpeg" secara otomatis menggunakan DataTransfer API
+
+        function tryAutoLoadWithInput() {
+            autoLoadStatus.textContent = '⏳ Mencoba memuat gambar otomatis...';
+            autoLoadStatus.className = 'auto-load-status loading';
+
+            // Buat file list dari path yang diketahui
+            // Karena kita tidak bisa mengakses file system langsung,
+            // kita akan meminta pengguna untuk memilih file sekali saja
+
+            // Coba trigger hidden file input
+            hiddenFileInput.click();
+
+            // Tapi ini akan meminta user memilih file, bukan otomatis
+            // Jadi kita gunakan pendekatan lain: cek apakah ada gambar di localStorage
+            // atau gunakan drag & drop yang sudah ada
+        }
 
         // ============================================================
-        // 2. UPLOAD GAMBAR (Manual)
+        // METODE 2: Menggunakan Drag & Drop + Upload Manual
         // ============================================================
+        // Kita akan mengandalkan user untuk upload manual,
+        // tapi dengan instruksi yang lebih jelas
+
+        // Tampilkan instruksi
+        autoLoadStatus.textContent = '📸 Silakan klik area di atas untuk upload gambar soal (soal.jpeg)';
+        autoLoadStatus.className = 'auto-load-status';
+
+        // ============================================================
+        // EVENT LISTENER UNTUK UPLOAD
+        // ============================================================
+
+        // Klik area upload
         imageUploadArea.addEventListener('click', function(e) {
             if (e.target === removeImageBtn) return;
             fileInput.click();
         });
 
+        // File input change
         fileInput.addEventListener('change', function(e) {
             const file = this.files[0];
             if (file) {
-                // Validasi ukuran
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('⚠️ Ukuran file terlalu besar! Maksimal 5MB.');
-                    this.value = '';
-                    return;
-                }
-                // Validasi tipe
-                const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-                if (!validTypes.includes(file.type)) {
-                    alert('⚠️ Format file tidak didukung! Gunakan JPG, PNG, atau JPEG.');
-                    this.value = '';
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    uploadedImage.src = event.target.result;
-                    uploadedImage.style.display = 'block';
-                    imageUploadArea.classList.add('has-image');
-                    imageUploadArea.classList.remove('has-error');
-                    autoLoadStatus.textContent = '✅ Gambar ' + file.name + ' berhasil diupload!';
-                    autoLoadStatus.className = 'auto-load-status success';
-                    // Hapus onerror agar tidak mengganggu
-                    uploadedImage.onload = null;
-                    uploadedImage.onerror = null;
-                };
-                reader.onerror = function() {
-                    alert('❌ Gagal membaca file. Silakan coba lagi.');
-                };
-                reader.readAsDataURL(file);
+                displayImageFromFile(file);
+                this.value = ''; // Reset agar bisa upload file yang sama lagi
+            }
+        });
+
+        // Hidden file input change (untuk auto-load)
+        hiddenFileInput.addEventListener('change', function(e) {
+            const file = this.files[0];
+            if (file) {
+                displayImageFromFile(file);
+                this.value = '';
             }
         });
 
@@ -756,23 +752,8 @@
             e.preventDefault();
             imageUploadArea.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('⚠️ Ukuran file terlalu besar! Maksimal 5MB.');
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    uploadedImage.src = event.target.result;
-                    uploadedImage.style.display = 'block';
-                    imageUploadArea.classList.add('has-image');
-                    imageUploadArea.classList.remove('has-error');
-                    autoLoadStatus.textContent = '✅ Gambar ' + file.name + ' berhasil diupload!';
-                    autoLoadStatus.className = 'auto-load-status success';
-                    uploadedImage.onload = null;
-                    uploadedImage.onerror = null;
-                };
-                reader.readAsDataURL(file);
+            if (file) {
+                displayImageFromFile(file);
             }
         });
 
@@ -783,10 +764,9 @@
             uploadedImage.style.display = 'none';
             imageUploadArea.classList.remove('has-image');
             fileInput.value = '';
-            autoLoadStatus.textContent = '🔄 Gambar dihapus. Refresh untuk auto-load ulang.';
+            hiddenFileInput.value = '';
+            autoLoadStatus.textContent = '🔄 Gambar dihapus. Upload ulang untuk menampilkan.';
             autoLoadStatus.className = 'auto-load-status';
-            // Reset try counter
-            currentTry = 0;
         });
 
         // ============================================================
@@ -1140,6 +1120,14 @@
         sliderB.addEventListener('input', updateAll);
 
         updateAll();
+
+        // ============================================================
+        // 6. INSTRUKSI KHUSUS UNTUK USER
+        // ============================================================
+        console.log('📸 Untuk menampilkan gambar soal:');
+        console.log('1. Klik area "Klik atau drag & drop untuk upload gambar soal"');
+        console.log('2. Pilih file soal.jpeg dari folder Anda');
+        console.log('3. Gambar akan muncul secara otomatis');
     </script>
 
 </body>
