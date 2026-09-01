@@ -448,9 +448,6 @@
         #fileInput {
             display: none;
         }
-        #hiddenFileInput {
-            display: none;
-        }
 
         .error-message {
             color: #ef4444;
@@ -518,17 +515,14 @@
             <div class="image-upload-area" id="imageUploadArea">
                 <input type="file" id="fileInput" accept="image/*" />
                 <span class="upload-icon">🖼️</span>
-                <span class="upload-text">Klik atau drag &amp; drop untuk upload gambar soal</span>
-                <span class="upload-hint">Format: JPG, PNG, JPEG • Maksimal 5MB</span>
+                <span class="upload-text">Gambar akan dimuat otomatis</span>
+                <span class="upload-hint">File: soal.jpeg</span>
                 <img id="uploadedImage" src="" alt="Soal" />
                 <button class="remove-btn" id="removeImageBtn" title="Hapus gambar">✕</button>
                 <div class="error-message">⚠️ Silakan upload gambar soal.</div>
             </div>
 
-            <!-- Hidden file input untuk auto-load -->
-            <input type="file" id="hiddenFileInput" accept="image/*" />
-
-            <div class="auto-load-status" id="autoLoadStatus">⏳ Menunggu upload gambar...</div>
+            <div class="auto-load-status" id="autoLoadStatus">⏳ Memuat gambar otomatis...</div>
 
             <div class="options-grid" id="optionsContainer">
                 <button class="option-btn" data-index="0" data-correct="false">
@@ -633,11 +627,10 @@
 
     <script>
         // ============================================================
-        // 1. AUTO-LOAD GAMBAR (Integrasi dengan fetch)
+        // 1. AUTO-LOAD GAMBAR (OTOMATIS 100%)
         // ============================================================
         const imageUploadArea = document.getElementById('imageUploadArea');
         const fileInput = document.getElementById('fileInput');
-        const hiddenFileInput = document.getElementById('hiddenFileInput');
         const uploadedImage = document.getElementById('uploadedImage');
         const removeImageBtn = document.getElementById('removeImageBtn');
         const autoLoadStatus = document.getElementById('autoLoadStatus');
@@ -646,14 +639,12 @@
         function displayImageFromFile(file) {
             if (!file) return;
 
-            // Validasi tipe
             if (!file.type.startsWith('image/')) {
                 autoLoadStatus.textContent = '⚠️ File bukan gambar!';
                 autoLoadStatus.className = 'auto-load-status error';
                 return;
             }
 
-            // Validasi ukuran
             if (file.size > 5 * 1024 * 1024) {
                 autoLoadStatus.textContent = '⚠️ Ukuran file terlalu besar! Maksimal 5MB.';
                 autoLoadStatus.className = 'auto-load-status error';
@@ -668,7 +659,6 @@
                 imageUploadArea.classList.remove('has-error');
                 autoLoadStatus.textContent = '✅ Gambar ' + file.name + ' berhasil dimuat!';
                 autoLoadStatus.className = 'auto-load-status success';
-                // Hapus onerror
                 uploadedImage.onerror = null;
             };
             reader.onerror = function() {
@@ -679,7 +669,7 @@
         }
 
         // ============================================================
-        // AUTO-LOAD MENGGUNAKAN FETCH (INTEGRASI UTAMA)
+        // AUTO-LOAD PAKAI FETCH (OTOMATIS)
         // ============================================================
         function autoLoadImage() {
             autoLoadStatus.textContent = '⏳ Mencari file soal.jpeg...';
@@ -693,7 +683,6 @@
                     return response.blob();
                 })
                 .then(blob => {
-                    // Cek apakah benar-benar gambar
                     if (!blob.type.startsWith('image/')) {
                         throw new Error('File bukan gambar');
                     }
@@ -702,32 +691,22 @@
                 })
                 .catch(err => {
                     console.log('Auto-load gagal:', err.message);
-                    autoLoadStatus.textContent = '📸 File soal.jpeg tidak ditemukan. Silakan upload secara manual.';
-                    autoLoadStatus.className = 'auto-load-status';
+                    autoLoadStatus.textContent = '❌ File soal.jpeg tidak ditemukan! Pastikan file ada di folder yang sama.';
+                    autoLoadStatus.className = 'auto-load-status error';
                 });
         }
 
         // ============================================================
-        // EVENT LISTENER UNTUK UPLOAD
+        // EVENT LISTENER UNTUK UPLOAD MANUAL (OPSIONAL)
         // ============================================================
 
-        // Klik area upload
+        // Klik area upload (tetap bisa manual jika diperlukan)
         imageUploadArea.addEventListener('click', function(e) {
             if (e.target === removeImageBtn) return;
             fileInput.click();
         });
 
-        // File input change
         fileInput.addEventListener('change', function(e) {
-            const file = this.files[0];
-            if (file) {
-                displayImageFromFile(file);
-                this.value = ''; // Reset agar bisa upload file yang sama lagi
-            }
-        });
-
-        // Hidden file input change (untuk auto-load)
-        hiddenFileInput.addEventListener('change', function(e) {
             const file = this.files[0];
             if (file) {
                 displayImageFromFile(file);
@@ -735,7 +714,7 @@
             }
         });
 
-        // Drag & drop
+        // Drag & drop (tetap bisa)
         imageUploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             imageUploadArea.classList.add('dragover');
@@ -761,18 +740,16 @@
             uploadedImage.style.display = 'none';
             imageUploadArea.classList.remove('has-image');
             fileInput.value = '';
-            hiddenFileInput.value = '';
-            autoLoadStatus.textContent = '🔄 Gambar dihapus. Upload ulang untuk menampilkan.';
+            autoLoadStatus.textContent = '🔄 Gambar dihapus. Refresh halaman untuk auto-load ulang.';
             autoLoadStatus.className = 'auto-load-status';
         });
 
         // ============================================================
         // 2. JALANKAN AUTO-LOAD SAAT HALAMAN DIMUAT
         // ============================================================
-        // Jalankan auto-load setelah halaman selesai dimuat
         window.addEventListener('load', function() {
-            // Beri jeda 500ms agar elemen siap
-            setTimeout(autoLoadImage, 500);
+            // Jalankan auto-load setelah halaman siap
+            setTimeout(autoLoadImage, 300);
         });
 
         // ============================================================
@@ -1130,5 +1107,3 @@
 
 </body>
 </html>
-
-
