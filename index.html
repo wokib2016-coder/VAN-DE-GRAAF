@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generator Van de Graaff - Simulasi Interaktif</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --text: #f8fafc;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            --correct: #2e7d32;
+            --wrong: #d32f2f;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #38bdf8;
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            text-align: center;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .question-card {
+            background: var(--panel);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 24px 22px;
+            width: 100%;
+            margin-bottom: 16px;
+            border: 1px solid #334155;
+        }
+
+        .image-upload-area {
+            width: 100%;
+            min-height: 200px;
+            border: 3px dashed #475569;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #0f172a;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .image-upload-area:hover {
+            border-color: #38bdf8;
+            background: #1a2332;
+        }
+        .image-upload-area.dragover {
+            border-color: #38bdf8;
+            background: #1e3a5f;
+        }
+        .image-upload-area .upload-icon {
+            font-size: 3rem;
+            color: #475569;
+            margin-bottom: 10px;
+        }
+        .image-upload-area .upload-text {
+            color: #94a3b8;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        .image-upload-area .upload-hint {
+            color: #64748b;
+            font-size: 0.85rem;
+            margin-top: 6px;
+        }
+        .image-upload-area img {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 8px;
+            display: none;
+        }
+        .image-upload-area .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            z-index: 10;
+        }
+        .image-upload-area .remove-btn:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+        .image-upload-area.has-image .remove-btn {
+            display: flex;
+        }
+        .image-upload-area.has-image .upload-icon,
+        .image-upload-area.has-image .upload-text,
+        .image-upload-area.has-image .upload-hint {
+            display: none;
+        }
+        .image-upload-area.has-image img {
+            display: block;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        @media (max-width: 768px) {
+            .options-grid {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+        @media (max-width: 500px) {
+            .options-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .option-btn {
+            padding: 14px 18px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border: 2.5px solid #475569;
+            border-radius: 12px;
+            background: #0f172a;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            text-align: center;
+            width: 100%;
+            color: #e2e8f0;
+        }
+        .option-btn:hover:not(.correct-selected):not(.wrong-selected) {
+            background: #1e293b;
+            border-color: #64748b;
+            transform: translateY(-2px);
+        }
+        .option-btn .letter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #1e293b;
+            font-weight: 700;
+            color: #38bdf8;
+            flex-shrink: 0;
+        }
+        .option-btn .text {
+            flex: 1;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .option-btn .feedback-icon {
+            font-size: 1.2rem;
+            font-weight: 700;
+            display: none;
+            margin-left: auto;
+        }
+
+        .option-btn.correct-selected {
+            border-color: var(--correct);
+            background: #1b3a1b;
+            color: #a5d6a7;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.3);
+        }
+        .option-btn.correct-selected .feedback-icon.check {
+            display: inline;
+            color: #4caf50;
+        }
+        .option-btn.correct-selected .letter {
+            background: var(--correct);
+            color: white;
+        }
+
+        .option-btn.wrong-selected {
+            border-color: var(--wrong);
+            background: #3a1b1b;
+            color: #ef9a9a;
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.3);
+        }
+        .option-btn.wrong-selected .feedback-icon.cross {
+            display: inline;
+            color: #ef5350;
+        }
+        .option-btn.wrong-selected .letter {
+            background: var(--wrong);
+            color: white;
+        }
+
+        .feedback-box {
+            margin-top: 16px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            display: none;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+        .feedback-box.show {
+            display: block;
+        }
+        .feedback-box.benar {
+            background: #1b3a1b;
+            border: 2px solid var(--correct);
+            color: #a5d6a7;
+        }
+        .feedback-box.salah {
+            background: #3a1b1b;
+            border: 2px solid var(--wrong);
+            color: #ef9a9a;
+        }
+
+        .explanation-detail {
+            margin-top: 8px;
+            font-weight: 400;
+            color: #cbd5e1;
+            font-size: 0.92rem;
+        }
+
+        .sim-toggle-btn {
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            color: white;
+            border: none;
+            padding: 16px 28px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 6px 20px rgba(2, 132, 199, 0.35);
+            transition: all 0.3s ease;
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
+        }
+        .sim-toggle-btn:active {
+            transform: scale(0.98);
+        }
+
+        .simulation-wrapper {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            gap: 16px;
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .sim-card {
+            background: var(--panel);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 20px 22px;
+            border: 1px solid #334155;
+        }
+        .sim-card h3 {
+            color: #38bdf8;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+        .sim-card p {
+            line-height: 1.7;
+            color: #cbd5e1;
+        }
+
+        .slider-container {
+            margin: 10px 0 6px 0;
+        }
+        .slider-container label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        .slider-container label .lamp-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .slider-container label .lamp-label .dot {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #64748b;
+        }
+        .slider-container label .lamp-label .dot.a {
+            background: #ef4444;
+        }
+        .slider-container label .lamp-label .dot.b {
+            background: #3b82f6;
+        }
+        .slider-container input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #334155;
+            -webkit-appearance: none;
+            appearance: none;
+            outline: none;
+            margin-top: 6px;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+            border: 2px solid #0f172a;
+        }
+        .slider-container input[type="range"].a-slider::-webkit-slider-thumb {
+            background: #ef4444;
+        }
+        .slider-container input[type="range"].b-slider::-webkit-slider-thumb {
+            background: #3b82f6;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px 16px;
+            background: #0f172a;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border-left: 4px solid #38bdf8;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            margin-top: 10px;
+        }
+        @media (max-width: 600px) {
+            .status-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .status-label {
+            color: #94a3b8;
+        }
+        .status-value {
+            color: #facc15;
+            font-weight: 600;
+        }
+        .status-value.on {
+            color: #4caf50;
+        }
+        .status-value.off {
+            color: #ef5350;
+        }
+        .status-value.a-off {
+            color: #94a3b8;
+        }
+        .status-value.b-on {
+            color: #ffffff;
+        }
+
+        .info-box {
+            background: #1e1b4b;
+            border: 1px solid #4338ca;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #c7d2fe;
+            margin-top: 10px;
+        }
+        .info-box strong {
+            color: #818cf8;
+        }
+
+        .highlight-box {
+            background: #1e293b;
+            border-left: 5px solid #f59e0b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 10px;
+            color: #fde68a;
+        }
+        .highlight-box strong {
+            color: #fbbf24;
+        }
+
+        canvas {
+            background: #090d16;
+            border-radius: 8px;
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 950 / 480;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 0.9rem;
+            margin-top: 8px;
+            display: none;
+        }
+        .image-upload-area.has-error .error-message {
+            display: block;
+        }
+
+        .max-indicator {
+            text-align: center;
+            margin-top: 4px;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        .max-indicator span {
+            color: #facc15;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <h1>⚡ GENERATOR VAN DE GRAFF</h1>
+        <p class="subtitle">Ayo Kuasai Konsepnya dan Pahami Konteksnya</p>
+
+        <div class="question-card">
+
+            <div class="image-upload-area" id="imageUploadArea">
+                <input type="file" id="fileInput" accept="image/*" />
+                <span class="upload-icon">🖼️</span>
+                <span class="upload-text">Klik atau drag &amp; drop untuk upload gambar soal</span>
+                <span class="upload-hint">Format: JPG, PNG, JPEG • Maksimal 5MB</span>
+                <img id="uploadedImage" src="" alt="Soal" />
+                <button class="remove-btn" id="removeImageBtn" title="Hapus gambar">✕</button>
+                <div class="error-message">⚠️ Silakan upload gambar soal.</div>
+            </div>
+
+            <div class="options-grid" id="optionsContainer">
+                <button class="option-btn" data-index="0" data-correct="false">
+                    <span class="letter">A</span>
+                    <span class="text">1,5 m<br/>A &amp; B nyala</span>
+                    <span><span class="feedback-icon check">✔</span><span class="feedback-icon cross">✖</span></span>
+                </button>
+                <button class="option-btn" data-index="1" data-correct="false">
+                    <span class="letter">B</span>
+                    <span class="text">2,5 m<br/>A nyala, B tidak</span>
+                    <span><span class="feedback-icon check">✔</span><span class="feedback-icon cross">✖</span></span>
+                </button>
+                <button class="option-btn" data-index="2" data-correct="false">
+                    <span class="letter">C</span>
+                    <span class="text">2,5 m<br/>A tidak, B nyala</span>
+                    <span><span class="feedback-icon check">✔</span><span class="feedback-icon cross">✖</span></span>
+                </button>
+                <button class="option-btn" data-index="3" data-correct="false">
+                    <span class="letter">D</span>
+                    <span class="text">4,5 m<br/>A nyala, B tidak</span>
+                    <span><span class="feedback-icon check">✔</span><span class="feedback-icon cross">✖</span></span>
+                </button>
+                <button class="option-btn" data-index="4" data-correct="true">
+                    <span class="letter">E</span>
+                    <span class="text">8,5 m<br/>A tidak, B nyala</span>
+                    <span><span class="feedback-icon check">✔</span><span class="feedback-icon cross">✖</span></span>
+                </button>
+            </div>
+
+            <div class="feedback-box" id="feedbackBox">
+                <span id="feedbackMessage"></span>
+                <div class="explanation-detail" id="feedbackDetail"></div>
+            </div>
+
+        </div>
+
+        <button class="sim-toggle-btn" id="simToggleBtn">🔬 SIMULASI INTERAKTIF</button>
+
+        <div class="simulation-wrapper" id="simulationWrapper">
+
+            <div class="sim-card">
+                <h3>⚡ Simulasi Potensial Listrik Dome &amp; Lampu Neon</h3>
+                <p style="margin-bottom:10px;">
+                    <strong style="color:#ef4444;">Lampu A</strong> (kiri, vertikal, maks 3 m) → <strong style="color:#ef4444;">TIDAK PERNAH MENYALA</strong> (ΔV = 0).<br/>
+                    <strong style="color:#3b82f6;">Lampu B</strong> (kanan, horizontal, maks 10 m) → Menyala tepat di x₂ = 8,5 m. Makin &lt; 8,5 m makin glowing, makin &gt; 8,5 m makin redup.
+                    <br/>Diketahui: <strong>R = 0,5 m</strong>, <strong>Q = 2 µC</strong>, <strong>V<sub>breakdown</sub> = 200 V</strong>
+                </p>
+
+                <canvas id="simCanvas" width="950" height="480"></canvas>
+
+                <!-- SLIDER A (MAX 3) -->
+                <div class="slider-container">
+                    <label>
+                        <span class="lamp-label">
+                            <span class="dot a"></span> Jarak Lampu A (x₁)
+                        </span>
+                        <span id="distanceDisplayA">2.00 m</span>
+                    </label>
+                    <input type="range" id="sliderA" class="a-slider" min="0" max="3" step="0.01" value="2" />
+                </div>
+
+                <!-- SLIDER B (MAX 10) -->
+                <div class="slider-container">
+                    <label>
+                        <span class="lamp-label">
+                            <span class="dot b"></span> Jarak Lampu B (x₂)
+                        </span>
+                        <span id="distanceDisplayB">8.50 m</span>
+                    </label>
+                    <input type="range" id="sliderB" class="b-slider" min="0" max="10" step="0.01" value="8.5" />
+                </div>
+
+                <div class="max-indicator">
+                    ⚡ Batas Slider: Lampu A maks <span>3,0 m</span> | Lampu B maks <span>10,0 m</span>
+                </div>
+
+                <!-- STATUS -->
+                <div class="status-grid">
+                    <div><span class="status-label">Lampu A (x₁):</span> <span id="statXa" class="status-value">2.00 m</span></div>
+                    <div><span class="status-label">Lampu B (x₂):</span> <span id="statXb" class="status-value">8.50 m</span></div>
+                    <div><span class="status-label">ΔV Lampu A:</span> <span id="statVa" class="status-value">0 V</span></div>
+                    <div><span class="status-label">ΔV Lampu B:</span> <span id="statVb" class="status-value">200.00 V</span></div>
+                    <div><span class="status-label">Status A:</span> <span id="statLampA" class="status-value a-off">⛔ PADAM</span></div>
+                    <div><span class="status-label">Status B:</span> <span id="statLampB" class="status-value b-on">💡 MENYALA</span></div>
+                </div>
+
+                <div class="info-box">
+                    <strong>📖 Rumus:</strong> ΔV = kQ ( 1/(R+x) − 1/(R+x+1) )<br/>
+                    kQ = 18000, R = 0,5 m, V_breakdown = 200 V
+                </div>
+
+                <div class="highlight-box">
+                    <strong>🔬 Konsep Kunci:</strong><br/>
+                    • <strong>Lampu A</strong> (vertikal): ΔV = 0 → <strong>TIDAK PERNAH NYALA</strong><br/>
+                    • <strong>Lampu B</strong> (horizontal): Pada x₂ = 8,5 m, ΔV tepat 200 V dan lampu menyala. Semakin kecil dari 8,5 m, lampu makin terang. Semakin besar dari 8,5 m, lampu makin redup.
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // ============================================================
+        // 1. UPLOAD GAMBAR
+        // ============================================================
+        const imageUploadArea = document.getElementById('imageUploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const removeImageBtn = document.getElementById('removeImageBtn');
+
+        imageUploadArea.addEventListener('click', function(e) {
+            if (e.target === removeImageBtn) return;
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function(e) {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    uploadedImage.src = event.target.result;
+                    uploadedImage.style.display = 'block';
+                    imageUploadArea.classList.add('has-image');
+                    imageUploadArea.classList.remove('has-error');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        imageUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            imageUploadArea.classList.add('dragover');
+        });
+
+        imageUploadArea.addEventListener('dragleave', () => {
+            imageUploadArea.classList.remove('dragover');
+        });
+
+        imageUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            imageUploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    uploadedImage.src = event.target.result;
+                    uploadedImage.style.display = 'block';
+                    imageUploadArea.classList.add('has-image');
+                    imageUploadArea.classList.remove('has-error');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        removeImageBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            uploadedImage.src = '';
+            uploadedImage.style.display = 'none';
+            imageUploadArea.classList.remove('has-image');
+            fileInput.value = '';
+        });
+
+        // ============================================================
+        // 2. JAWABAN (KUNCI: E)
+        // ============================================================
+        const optionBtns = document.querySelectorAll('.option-btn');
+        const feedbackBox = document.getElementById('feedbackBox');
+        const feedbackMessage = document.getElementById('feedbackMessage');
+        const feedbackDetail = document.getElementById('feedbackDetail');
+
+        const answerData = [{
+            correct: false,
+            explanation: '❌ A: Lampu A TIDAK PERNAH menyala (ΔV = 0).'
+        }, {
+            correct: false,
+            explanation: '❌ B: Lampu A tidak pernah menyala.'
+        }, {
+            correct: false,
+            explanation: '❌ C: Pada x₂=2,5m, Lampu B menyala sangat terang.'
+        }, {
+            correct: false,
+            explanation: '❌ D: Lampu A tidak pernah menyala.'
+        }, {
+            correct: true,
+            explanation: '✅ BENAR! Lampu A tidak pernah menyala. Lampu B menyala pada x₂=8,5m (ΔV=200V).'
+        }];
+
+        optionBtns.forEach((btn, idx) => {
+            btn.addEventListener('click', function() {
+                optionBtns.forEach(b => b.classList.remove('correct-selected', 'wrong-selected'));
+                const isCorrect = this.dataset.correct === 'true';
+                this.classList.add(isCorrect ? 'correct-selected' : 'wrong-selected');
+                const data = answerData[idx];
+                feedbackBox.className = 'feedback-box show ' + (isCorrect ? 'benar' : 'salah');
+                feedbackMessage.textContent = isCorrect ? '✅ Benar!' : '❌ Kurang Tepat';
+                feedbackDetail.textContent = data.explanation;
+                feedbackBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        });
+
+        // ============================================================
+        // 3. TAMPILKAN SIMULASI
+        // ============================================================
+        const simToggleBtn = document.getElementById('simToggleBtn');
+        const simWrapper = document.getElementById('simulationWrapper');
+        let simVisible = false;
+
+        simToggleBtn.addEventListener('click', () => {
+            simVisible = !simVisible;
+            simWrapper.style.display = simVisible ? 'flex' : 'none';
+            simToggleBtn.textContent = simVisible ? '🔬 SEMBUNYIKAN SIMULASI' : '🔬 SIMULASI INTERAKTIF';
+            if (simVisible) {
+                setTimeout(() => simWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+            }
+        });
+
+        // ============================================================
+        // 4. SIMULASI
+        // ============================================================
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const sliderA = document.getElementById('sliderA');
+        const sliderB = document.getElementById('sliderB');
+        const distanceDisplayA = document.getElementById('distanceDisplayA');
+        const distanceDisplayB = document.getElementById('distanceDisplayB');
+
+        const statXa = document.getElementById('statXa');
+        const statXb = document.getElementById('statXb');
+        const statVa = document.getElementById('statVa');
+        const statVb = document.getElementById('statVb');
+        const statLampA = document.getElementById('statLampA');
+        const statLampB = document.getElementById('statLampB');
+
+        const kQ = 18000;
+        const R = 0.5;
+        const V_breakdown = 200;
+
+        let xA = 2.0;
+        let xB = 8.5;
+
+        function hitungDeltaV(x) {
+            return kQ * ((1 / (R + x)) - (1 / (R + x + 1)));
+        }
+
+        function getLampColor(deltaV) {
+            let gray, glowAlpha;
+            if (deltaV >= V_breakdown) {
+                let factor = Math.min(1.0, (deltaV - 200) / 700);
+                gray = 255;
+                glowAlpha = 0.2 + factor * 0.6;
+            } else {
+                let factor = Math.max(0, deltaV / 200);
+                gray = Math.floor(40 + 215 * factor);
+                glowAlpha = factor * 0.2;
+            }
+
+            return {
+                color: `rgb(${gray}, ${gray}, ${gray})`,
+                glow: `rgba(255, 255, 255, ${glowAlpha})`,
+                intensity: Math.max(0.1, deltaV / 250)
+            };
+        }
+
+        function updateStatus() {
+            const dV_B = hitungDeltaV(xB);
+            const nyalaB = dV_B >= V_breakdown;
+
+            statXa.textContent = xA.toFixed(2) + ' m';
+            statXb.textContent = xB.toFixed(2) + ' m';
+            statVa.textContent = '0 V';
+            statVb.textContent = dV_B.toFixed(2) + ' V';
+            statLampA.textContent = '⛔ PADAM';
+            statLampA.className = 'status-value a-off';
+            statLampB.textContent = nyalaB ? '💡 MENYALA' : '⬛ REDUP';
+            statLampB.className = 'status-value ' + (nyalaB ? 'b-on' : 'off');
+        }
+
+        function drawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const grad = ctx.createRadialGradient(475, 240, 20, 475, 240, 450);
+            grad.addColorStop(0, '#1a2332');
+            grad.addColorStop(1, '#090d16');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText('⚡ Generator Van de Graaff - Simulasi Interaktif', 20, 28);
+
+            const centerX = 475;
+            const baseY = 410;
+            const scale = 32;
+
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(centerX - 50, baseY - 4, 10, 26);
+            ctx.fillRect(centerX - 58, baseY + 20, 26, 5);
+            ctx.fillRect(centerX + 40, baseY - 4, 10, 26);
+            ctx.fillRect(centerX + 32, baseY + 20, 26, 5);
+            ctx.fillRect(centerX - 6, baseY - 2, 12, 24);
+
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(centerX - 10, baseY - 100, 20, 100);
+            ctx.fillStyle = '#94a3b8';
+            for (let i = 0; i < 4; i++) {
+                const yPos = baseY - 20 - i * 22;
+                ctx.fillRect(centerX - 15, yPos, 30, 4);
+            }
+
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.arc(centerX, baseY - 100 + 16, 14, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(centerX, baseY - 100 - 55, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(centerX + 18, baseY - 16, 24, 14);
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(centerX + 21, baseY - 13, 6, 6);
+
+            const radiusPx = R * scale;
+            const domeY = baseY - 100 - 45;
+
+            const glow = ctx.createRadialGradient(centerX, domeY, 5, centerX, domeY, radiusPx + 25);
+            glow.addColorStop(0, 'rgba(56, 189, 248, 0.12)');
+            glow.addColorStop(1, 'rgba(56, 189, 248, 0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(centerX, domeY, radiusPx + 25, 0, Math.PI * 2);
+            ctx.fill();
+
+            const gradBola = ctx.createRadialGradient(centerX - 12, domeY - 12, 4, centerX, domeY, radiusPx);
+            gradBola.addColorStop(0, '#93c5fd');
+            gradBola.addColorStop(0.3, '#3b82f6');
+            gradBola.addColorStop(0.7, '#1e40af');
+            gradBola.addColorStop(1, '#1e3a5f');
+            ctx.fillStyle = gradBola;
+            ctx.beginPath();
+            ctx.arc(centerX, domeY, radiusPx, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#60a5fa';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('+ +', centerX, domeY);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '9px sans-serif';
+            ctx.textBaseline = 'top';
+            ctx.fillText('DOME (R=0.5m)', centerX, domeY + radiusPx + 4);
+
+            // ================================================================
+            // LAMPU A (KIRI - VERTIKAL)
+            // ================================================================
+            const jarakPxA = xA * scale;
+            const ujungDalamAX = centerX - radiusPx - 8 - jarakPxA;
+            const lampuPanjangA = 0.8 * scale;
+            const lampuATop = domeY - lampuPanjangA / 2;
+            const lampuABottom = domeY + lampuPanjangA / 2;
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#262626';
+            ctx.beginPath();
+            ctx.roundRect(ujungDalamAX - 6, lampuATop, 12, lampuPanjangA, 3);
+            ctx.fill();
+
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(ujungDalamAX - 8, lampuATop - 2, 16, 3);
+            ctx.fillRect(ujungDalamAX - 8, lampuABottom - 1, 16, 3);
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('A', ujungDalamAX, (lampuATop + lampuABottom) / 2);
+
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('⛔ PADAM', ujungDalamAX, lampuATop - 4);
+
+            // ================================================================
+            // LAMPU B (KANAN - HORIZONTAL)
+            // ================================================================
+            const dV_B = hitungDeltaV(xB);
+            const nyalaB = dV_B >= V_breakdown;
+            const jarakPxB = xB * scale;
+
+            const lampuBY = domeY;
+            const ujungDalamB = centerX + radiusPx + 8 + jarakPxB;
+            const panjangFisikLampuB = 0.8 * scale;
+            const ujungLuarB = ujungDalamB + panjangFisikLampuB;
+
+            const colorB = getLampColor(dV_B);
+
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([3, 6]);
+            ctx.beginPath();
+            ctx.moveTo(centerX + radiusPx + 8, domeY);
+            ctx.lineTo(920, domeY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.shadowColor = colorB.glow;
+            ctx.shadowBlur = colorB.intensity * 35;
+            ctx.fillStyle = colorB.color;
+            ctx.beginPath();
+            ctx.roundRect(ujungDalamB, lampuBY - 6, panjangFisikLampuB, 12, 3);
+            ctx.fill();
+
+            ctx.fillStyle = '#64748b';
+            ctx.shadowBlur = 0;
+            ctx.fillRect(ujungDalamB - 2, lampuBY - 8, 3, 16);
+            ctx.fillRect(ujungLuarB - 1, lampuBY - 8, 3, 16);
+
+            const centerB = (ujungDalamB + ujungLuarB) / 2;
+
+            ctx.fillStyle = nyalaB ? '#ffffff' : '#94a3b8';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(nyalaB ? '💡 NYALA' : '⬛ REDUP', centerB, lampuBY - 10);
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(`${dV_B.toFixed(0)}V`, centerB, lampuBY - 21);
+
+            // ================================================================
+            // GARIS PANAH JARAK B & A
+            // ================================================================
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 4]);
+            const arrowBY = domeY + 45;
+            ctx.beginPath();
+            ctx.moveTo(centerX + radiusPx, arrowBY);
+            ctx.lineTo(ujungDalamB, arrowBY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.7)';
+            ctx.font = '9px sans-serif';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`x₂ = ${xB.toFixed(1)} m`, (centerX + radiusPx + ujungDalamB) / 2, arrowBY + 3);
+
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 4]);
+            const arrowAY = domeY + 45;
+            ctx.beginPath();
+            ctx.moveTo(centerX - radiusPx, arrowAY);
+            ctx.lineTo(ujungDalamAX, arrowAY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+            ctx.font = '9px sans-serif';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`x₁ = ${xA.toFixed(1)} m`, (centerX - radiusPx + ujungDalamAX) / 2, arrowAY + 3);
+
+            ctx.fillStyle = '#475569';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('⚡ Q = 2 µC  |  R = 0.5 m  |  V_breakdown = 200 V', 20, canvas.height - 10);
+            ctx.textAlign = 'right';
+            ctx.fillText('Design by WOKIB 2026', canvas.width - 20, canvas.height - 10);
+        }
+
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                if (r > w / 2) r = w / 2;
+                if (r > h / 2) r = h / 2;
+                this.moveTo(x + r, y);
+                this.lineTo(x + w - r, y);
+                this.quadraticCurveTo(x + w, y, x + w, y + r);
+                this.lineTo(x + w, y + h - r);
+                this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                this.lineTo(x + r, y + h);
+                this.quadraticCurveTo(x, y + h, x, y + h - r);
+                this.lineTo(x, y + r);
+                this.quadraticCurveTo(x, y, x + r, y);
+                this.closePath();
+                return this;
+            };
+        }
+
+        function updateAll() {
+            xA = parseFloat(sliderA.value);
+            xB = parseFloat(sliderB.value);
+            distanceDisplayA.textContent = xA.toFixed(2) + ' m';
+            distanceDisplayB.textContent = xB.toFixed(2) + ' m';
+            updateStatus();
+            drawCanvas();
+        }
+
+        sliderA.addEventListener('input', updateAll);
+        sliderB.addEventListener('input', updateAll);
+
+        updateAll();
+    </script>
+
+</body>
+</html>
