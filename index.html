@@ -139,6 +139,16 @@
         .image-upload-area.has-image img {
             display: block;
         }
+        .image-upload-area.loading .upload-text {
+            color: #facc15;
+        }
+        .image-upload-area.loading .upload-icon {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
         .options-grid {
             display: grid;
@@ -469,6 +479,19 @@
             color: #facc15;
             font-weight: 700;
         }
+
+        .auto-load-status {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 4px;
+            text-align: center;
+        }
+        .auto-load-status.success {
+            color: #4caf50;
+        }
+        .auto-load-status.error {
+            color: #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -489,6 +512,8 @@
                 <button class="remove-btn" id="removeImageBtn" title="Hapus gambar">✕</button>
                 <div class="error-message">⚠️ Silakan upload gambar soal.</div>
             </div>
+
+            <div class="auto-load-status" id="autoLoadStatus">⏳ Memuat gambar otomatis...</div>
 
             <div class="options-grid" id="optionsContainer">
                 <button class="option-btn" data-index="0" data-correct="false">
@@ -593,13 +618,104 @@
 
     <script>
         // ============================================================
-        // 1. UPLOAD GAMBAR
+        // 1. AUTO-LOAD GAMBAR DARI FOLDER
         // ============================================================
         const imageUploadArea = document.getElementById('imageUploadArea');
         const fileInput = document.getElementById('fileInput');
         const uploadedImage = document.getElementById('uploadedImage');
         const removeImageBtn = document.getElementById('removeImageBtn');
+        const autoLoadStatus = document.getElementById('autoLoadStatus');
 
+        function loadImageFromFile(filename) {
+            imageUploadArea.classList.add('loading');
+            autoLoadStatus.textContent = '⏳ Memuat ' + filename + '...';
+            autoLoadStatus.className = 'auto-load-status';
+
+            fetch(filename)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('File tidak ditemukan: ' + filename);
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Cek apakah blob adalah gambar
+                    if (!blob.type.startsWith('image/')) {
+                        throw new Error('File bukan gambar: ' + filename);
+                    }
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        uploadedImage.src = event.target.result;
+                        uploadedImage.style.display = 'block';
+                        imageUploadArea.classList.add('has-image');
+                        imageUploadArea.classList.remove('has-error');
+                        imageUploadArea.classList.remove('loading');
+                        autoLoadStatus.textContent = '✅ Gambar ' + filename + ' berhasil dimuat!';
+                        autoLoadStatus.className = 'auto-load-status success';
+                    };
+                    reader.onerror = function() {
+                        throw new Error('Gagal membaca file gambar.');
+                    };
+                    reader.readAsDataURL(blob);
+                })
+                .catch(err => {
+                    imageUploadArea.classList.remove('loading');
+                    autoLoadStatus.textContent = '⚠️ ' + err.message + ' — Silakan upload manual.';
+                    autoLoadStatus.className = 'auto-load-status error';
+                    console.warn('Auto-load error:', err.message);
+                });
+        }
+
+        // Coba muat soal.jpeg, jika gagal coba soal.jpg
+        function tryAutoLoad() {
+            const filesToTry = ['soal.jpeg', 'soal.jpg', 'soal.png'];
+            let tried = 0;
+
+            function tryNext() {
+                if (tried >= filesToTry.length) {
+                    autoLoadStatus.textContent = '⚠️ Tidak ada file gambar ditemukan. Silakan upload manual.';
+                    autoLoadStatus.className = 'auto-load-status error';
+                    return;
+                }
+                const filename = filesToTry[tried];
+                tried++;
+
+                fetch(filename)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('File tidak ditemukan');
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        if (!blob.type.startsWith('image/')) {
+                            throw new Error('Bukan gambar');
+                        }
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            uploadedImage.src = event.target.result;
+                            uploadedImage.style.display = 'block';
+                            imageUploadArea.classList.add('has-image');
+                            imageUploadArea.classList.remove('has-error');
+                            autoLoadStatus.textContent = '✅ Gambar ' + filename + ' berhasil dimuat!';
+                            autoLoadStatus.className = 'auto-load-status success';
+                        };
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(() => {
+                        tryNext(); // Coba file berikutnya
+                    });
+            }
+
+            tryNext();
+        }
+
+        // Jalankan auto-load saat halaman dimuat
+        tryAutoLoad();
+
+        // ============================================================
+        // 2. UPLOAD GAMBAR (Manual)
+        // ============================================================
         imageUploadArea.addEventListener('click', function(e) {
             if (e.target === removeImageBtn) return;
             fileInput.click();
@@ -608,17 +724,36 @@
         fileInput.addEventListener('change', function(e) {
             const file = this.files[0];
             if (file) {
+                // Validasi ukuran
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('⚠️ Ukuran file terlalu besar! Maksimal 5MB.');
+                    this.value = '';
+                    return;
+                }
+                // Validasi tipe
+                const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+                if (!validTypes.includes(file.type)) {
+                    alert('⚠️ Format file tidak didukung! Gunakan JPG, PNG, atau JPEG.');
+                    this.value = '';
+                    return;
+                }
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     uploadedImage.src = event.target.result;
                     uploadedImage.style.display = 'block';
                     imageUploadArea.classList.add('has-image');
                     imageUploadArea.classList.remove('has-error');
+                    autoLoadStatus.textContent = '✅ Gambar ' + file.name + ' berhasil diupload!';
+                    autoLoadStatus.className = 'auto-load-status success';
+                };
+                reader.onerror = function() {
+                    alert('❌ Gagal membaca file. Silakan coba lagi.');
                 };
                 reader.readAsDataURL(file);
             }
         });
 
+        // Drag & drop
         imageUploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             imageUploadArea.classList.add('dragover');
@@ -633,27 +768,36 @@
             imageUploadArea.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
             if (file && file.type.startsWith('image/')) {
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('⚠️ Ukuran file terlalu besar! Maksimal 5MB.');
+                    return;
+                }
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     uploadedImage.src = event.target.result;
                     uploadedImage.style.display = 'block';
                     imageUploadArea.classList.add('has-image');
                     imageUploadArea.classList.remove('has-error');
+                    autoLoadStatus.textContent = '✅ Gambar ' + file.name + ' berhasil diupload!';
+                    autoLoadStatus.className = 'auto-load-status success';
                 };
                 reader.readAsDataURL(file);
             }
         });
 
+        // Hapus gambar
         removeImageBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             uploadedImage.src = '';
             uploadedImage.style.display = 'none';
             imageUploadArea.classList.remove('has-image');
             fileInput.value = '';
+            autoLoadStatus.textContent = '🔄 Gambar dihapus. Upload ulang atau refresh untuk auto-load.';
+            autoLoadStatus.className = 'auto-load-status';
         });
 
         // ============================================================
-        // 2. JAWABAN (KUNCI: E)
+        // 3. JAWABAN (KUNCI: E)
         // ============================================================
         const optionBtns = document.querySelectorAll('.option-btn');
         const feedbackBox = document.getElementById('feedbackBox');
@@ -691,7 +835,7 @@
         });
 
         // ============================================================
-        // 3. TAMPILKAN SIMULASI
+        // 4. TAMPILKAN SIMULASI
         // ============================================================
         const simToggleBtn = document.getElementById('simToggleBtn');
         const simWrapper = document.getElementById('simulationWrapper');
@@ -707,7 +851,7 @@
         });
 
         // ============================================================
-        // 4. SIMULASI
+        // 5. SIMULASI
         // ============================================================
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
@@ -1007,3 +1151,4 @@
 
 </body>
 </html>
+
