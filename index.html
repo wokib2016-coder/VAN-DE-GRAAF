@@ -139,16 +139,6 @@
         .image-upload-area.has-image img {
             display: block;
         }
-        .image-upload-area.loading .upload-text {
-            color: #facc15;
-        }
-        .image-upload-area.loading .upload-icon {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
 
         .options-grid {
             display: grid;
@@ -481,16 +471,35 @@
         }
 
         .auto-load-status {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: #94a3b8;
-            margin-top: 4px;
+            margin-top: 6px;
             text-align: center;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: #0f172a;
         }
         .auto-load-status.success {
             color: #4caf50;
+            background: #1b3a1b;
         }
         .auto-load-status.error {
             color: #ef4444;
+            background: #3a1b1b;
+        }
+        .auto-load-status.loading {
+            color: #facc15;
+            background: #3a3a1b;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
         }
     </style>
 </head>
@@ -618,7 +627,7 @@
 
     <script>
         // ============================================================
-        // 1. AUTO-LOAD GAMBAR DARI FOLDER
+        // 1. AUTO-LOAD GAMBAR (Menggunakan <img> langsung)
         // ============================================================
         const imageUploadArea = document.getElementById('imageUploadArea');
         const fileInput = document.getElementById('fileInput');
@@ -626,92 +635,69 @@
         const removeImageBtn = document.getElementById('removeImageBtn');
         const autoLoadStatus = document.getElementById('autoLoadStatus');
 
-        function loadImageFromFile(filename) {
-            imageUploadArea.classList.add('loading');
+        function loadImageBySrc(filename) {
             autoLoadStatus.textContent = '⏳ Memuat ' + filename + '...';
-            autoLoadStatus.className = 'auto-load-status';
+            autoLoadStatus.className = 'auto-load-status loading';
 
-            fetch(filename)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('File tidak ditemukan: ' + filename);
-                    }
-                    return response.blob();
-                })
-                .then(blob => {
-                    // Cek apakah blob adalah gambar
-                    if (!blob.type.startsWith('image/')) {
-                        throw new Error('File bukan gambar: ' + filename);
-                    }
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        uploadedImage.src = event.target.result;
-                        uploadedImage.style.display = 'block';
-                        imageUploadArea.classList.add('has-image');
-                        imageUploadArea.classList.remove('has-error');
-                        imageUploadArea.classList.remove('loading');
-                        autoLoadStatus.textContent = '✅ Gambar ' + filename + ' berhasil dimuat!';
-                        autoLoadStatus.className = 'auto-load-status success';
-                    };
-                    reader.onerror = function() {
-                        throw new Error('Gagal membaca file gambar.');
-                    };
-                    reader.readAsDataURL(blob);
-                })
-                .catch(err => {
-                    imageUploadArea.classList.remove('loading');
-                    autoLoadStatus.textContent = '⚠️ ' + err.message + ' — Silakan upload manual.';
-                    autoLoadStatus.className = 'auto-load-status error';
-                    console.warn('Auto-load error:', err.message);
-                });
+            // Cara paling sederhana: set src langsung ke <img>
+            uploadedImage.src = filename;
+            uploadedImage.style.display = 'block';
+            imageUploadArea.classList.add('has-image');
+            imageUploadArea.classList.remove('has-error');
+
+            // Cek apakah gambar berhasil dimuat
+            uploadedImage.onload = function() {
+                autoLoadStatus.textContent = '✅ Gambar ' + filename + ' berhasil dimuat!';
+                autoLoadStatus.className = 'auto-load-status success';
+                uploadedImage.onload = null;
+                uploadedImage.onerror = null;
+            };
+
+            uploadedImage.onerror = function() {
+                // Jika gagal, coba file lain
+                uploadedImage.style.display = 'none';
+                imageUploadArea.classList.remove('has-image');
+                tryNextFile();
+            };
         }
 
-        // Coba muat soal.jpeg, jika gagal coba soal.jpg
-        function tryAutoLoad() {
-            const filesToTry = ['soal.jpeg', 'soal.jpg', 'soal.png'];
-            let tried = 0;
+        const filesToTry = ['soal.jpeg', 'soal.jpg', 'soal.png'];
+        let currentTry = 0;
 
-            function tryNext() {
-                if (tried >= filesToTry.length) {
-                    autoLoadStatus.textContent = '⚠️ Tidak ada file gambar ditemukan. Silakan upload manual.';
-                    autoLoadStatus.className = 'auto-load-status error';
-                    return;
-                }
-                const filename = filesToTry[tried];
-                tried++;
-
-                fetch(filename)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('File tidak ditemukan');
-                        }
-                        return response.blob();
-                    })
-                    .then(blob => {
-                        if (!blob.type.startsWith('image/')) {
-                            throw new Error('Bukan gambar');
-                        }
-                        const reader = new FileReader();
-                        reader.onload = function(event) {
-                            uploadedImage.src = event.target.result;
-                            uploadedImage.style.display = 'block';
-                            imageUploadArea.classList.add('has-image');
-                            imageUploadArea.classList.remove('has-error');
-                            autoLoadStatus.textContent = '✅ Gambar ' + filename + ' berhasil dimuat!';
-                            autoLoadStatus.className = 'auto-load-status success';
-                        };
-                        reader.readAsDataURL(blob);
-                    })
-                    .catch(() => {
-                        tryNext(); // Coba file berikutnya
-                    });
+        function tryNextFile() {
+            if (currentTry >= filesToTry.length) {
+                autoLoadStatus.textContent = '⚠️ Tidak ada file gambar ditemukan. Silakan upload manual.';
+                autoLoadStatus.className = 'auto-load-status error';
+                return;
             }
 
-            tryNext();
+            const filename = filesToTry[currentTry];
+            currentTry++;
+
+            autoLoadStatus.textContent = '⏳ Mencoba ' + filename + '...';
+            autoLoadStatus.className = 'auto-load-status loading';
+
+            uploadedImage.src = filename;
+            uploadedImage.style.display = 'block';
+            imageUploadArea.classList.add('has-image');
+
+            uploadedImage.onload = function() {
+                autoLoadStatus.textContent = '✅ Gambar ' + filename + ' berhasil dimuat!';
+                autoLoadStatus.className = 'auto-load-status success';
+                uploadedImage.onload = null;
+                uploadedImage.onerror = null;
+            };
+
+            uploadedImage.onerror = function() {
+                uploadedImage.style.display = 'none';
+                imageUploadArea.classList.remove('has-image');
+                // Coba file berikutnya
+                tryNextFile();
+            };
         }
 
-        // Jalankan auto-load saat halaman dimuat
-        tryAutoLoad();
+        // Mulai auto-load
+        tryNextFile();
 
         // ============================================================
         // 2. UPLOAD GAMBAR (Manual)
@@ -745,6 +731,9 @@
                     imageUploadArea.classList.remove('has-error');
                     autoLoadStatus.textContent = '✅ Gambar ' + file.name + ' berhasil diupload!';
                     autoLoadStatus.className = 'auto-load-status success';
+                    // Hapus onerror agar tidak mengganggu
+                    uploadedImage.onload = null;
+                    uploadedImage.onerror = null;
                 };
                 reader.onerror = function() {
                     alert('❌ Gagal membaca file. Silakan coba lagi.');
@@ -780,6 +769,8 @@
                     imageUploadArea.classList.remove('has-error');
                     autoLoadStatus.textContent = '✅ Gambar ' + file.name + ' berhasil diupload!';
                     autoLoadStatus.className = 'auto-load-status success';
+                    uploadedImage.onload = null;
+                    uploadedImage.onerror = null;
                 };
                 reader.readAsDataURL(file);
             }
@@ -792,8 +783,10 @@
             uploadedImage.style.display = 'none';
             imageUploadArea.classList.remove('has-image');
             fileInput.value = '';
-            autoLoadStatus.textContent = '🔄 Gambar dihapus. Upload ulang atau refresh untuk auto-load.';
+            autoLoadStatus.textContent = '🔄 Gambar dihapus. Refresh untuk auto-load ulang.';
             autoLoadStatus.className = 'auto-load-status';
+            // Reset try counter
+            currentTry = 0;
         });
 
         // ============================================================
@@ -1151,4 +1144,3 @@
 
 </body>
 </html>
-
